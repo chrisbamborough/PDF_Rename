@@ -1,5 +1,6 @@
 import os
 import re
+import subprocess
 import shutil
 from pathlib import Path
 
@@ -362,13 +363,39 @@ def rename_pdfs_in_folder(
             print(f"Error processing {pdf.name}: {e}")
 
 
+def choose_folder_in_finder() -> str | None:
+    """
+    Open a native Finder folder picker (macOS) and return the selected path.
+    Returns None if the user cancels or selection fails.
+    """
+    script = 'POSIX path of (choose folder with prompt "Select a folder of PDFs to rename")'
+    try:
+        result = subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except Exception:
+        return None
+
+    if result.returncode != 0:
+        # User cancellation is returned as a non-zero exit code.
+        return None
+
+    folder = result.stdout.strip()
+    return folder or None
+
+
 if __name__ == "__main__":
-    # 🔧 EDIT THIS PATH
-    FOLDER = "/Users/smthspce/Library/CloudStorage/OneDrive-UNSW/00_Arch Manu Personal_/Reading_/RENAME"
+    selected_folder = choose_folder_in_finder()
+    if not selected_folder:
+        print("No folder selected. Exiting.")
+        raise SystemExit(0)
 
     # First run as dry_run=True to see what it would do
     rename_pdfs_in_folder(
-        FOLDER,
+        selected_folder,
         dry_run=False,
         use_crossref=True,   # set False if you want purely offline behaviour
         max_pages=10,
